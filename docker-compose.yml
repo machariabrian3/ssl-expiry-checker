@@ -1,0 +1,18 @@
+services:
+  ssl-expiry-checker:
+    build:
+      context: .
+    image: ssl-expiry-checker:latest
+    container_name: ssl-expiry-checker
+    ports:
+      - "8011:8011"
+    environment:
+      SSL_CONNECT_TIMEOUT_MS: "5000"
+      SSL_READ_TIMEOUT_MS: "7000"
+      SSL_EXPIRING_DAYS: "7"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://localhost:8011/actuator/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped

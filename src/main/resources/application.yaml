@@ -1,0 +1,17 @@
+spring:
+  application:
+    name: domain_ssl_checker
+
+server:
+  port: ${APP_PORT:8011}
+
+ssl:
+  connect-timeout-ms: ${SSL_CONNECT_TIMEOUT_MS:5000}
+  read-timeout-ms: ${SSL_READ_TIMEOUT_MS:7000}
+  expiring-days: ${SSL_EXPIRING_DAYS:7}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
