@@ -38,19 +38,43 @@ public class SslExpiryService {
 	}
 
 	public SslExpiryResponse check(String host, int port) {
+		CheckResult result = checkInternal(host, port, null);
+		return result.response;
+	}
+
+	public SslExpiryResponse checkWithFallback(String host, int port, String fallbackIp, boolean resolveDnsIfNoIp) {
+		CheckResult primary = checkInternal(host, port, null);
+		if (primary.response.getStatus() == SslExpiryStatus.ERROR) {
+			return primary.response;
+		}
+		if (!isLikelyIntercepted(primary.certificate)) {
+			return primary.response;
+		}
+
+		List<String> fallbackTargets = resolveFallbackTargets(host, fallbackIp, resolveDnsIfNoIp);
+		for (String target : fallbackTargets) {
+			CheckResult fallback = checkInternal(host, port, target);
+			if (fallback.response.getStatus() != SslExpiryStatus.ERROR) {
+				return fallback.response;
+			}
+		}
+		return primary.response;
+	}
+
+	private CheckResult checkInternal(String host, int port, String connectAddress) {
 		OffsetDateTime checkedAt = OffsetDateTime.now(ZoneOffset.UTC);
 		HandshakeResult result;
 		try {
-			result = attemptHandshake(host, port, false);
+			result = attemptHandshake(host, port, connectAddress, false);
 		} catch (Exception firstEx) {
 			logger.warn("TLS handshake failed with default trust for {}:{} - {}", host, port, firstEx.getMessage());
 			try {
-				result = attemptHandshake(host, port, true);
+				result = attemptHandshake(host, port, connectAddress, true);
 				result.chainTrusted = false;
 			} catch (Exception secondEx) {
 				String message = friendlyMessage(secondEx);
 				logger.warn("TLS handshake failed for {}:{} - {}", host, port, message);
-				return SslExpiryResponse.error(host, port, message, checkedAt);
+				return CheckResult.error(host, port, message, checkedAt);
 			}
 		}
 
@@ -76,7 +100,7 @@ public class SslExpiryService {
 		response.setStatus(status);
 		response.setCheckedAt(checkedAt);
 		response.setChainTrusted(result.chainTrusted);
-		return response;
+		return new CheckResult(response, result.certificate);
 	}
 
 	private int calculateDaysRemaining(Instant now, Instant notAfter, boolean expired) {
@@ -88,11 +112,12 @@ public class SslExpiryService {
 		return (int) Math.ceil(days);
 	}
 
-	private HandshakeResult attemptHandshake(String host, int port, boolean trustAll)
+	private HandshakeResult attemptHandshake(String host, int port, String connectAddress, boolean trustAll)
 			throws IOException, GeneralSecurityException {
 		SSLSocketFactory factory = sslContext(trustAll).getSocketFactory();
+		String address = (connectAddress == null || connectAddress.isBlank()) ? host : connectAddress;
 		try (Socket socket = new Socket()) {
-			socket.connect(new InetSocketAddress(host, port), properties.getConnectTimeoutMs());
+			socket.connect(new InetSocketAddress(address, port), properties.getConnectTimeoutMs());
 			socket.setSoTimeout(properties.getReadTimeoutMs());
 
 			try (SSLSocket sslSocket = (SSLSocket) factory.createSocket(socket, host, port, true)) {
@@ -136,6 +161,59 @@ public class SslExpiryService {
 			this.certificate = certificate;
 			this.chainTrusted = chainTrusted;
 		}
+	}
+
+	private static class CheckResult {
+		private final SslExpiryResponse response;
+		private final X509Certificate certificate;
+
+		private CheckResult(SslExpiryResponse response, X509Certificate certificate) {
+			this.response = response;
+			this.certificate = certificate;
+		}
+
+		private static CheckResult error(String host, int port, String message, OffsetDateTime checkedAt) {
+			return new CheckResult(SslExpiryResponse.error(host, port, message, checkedAt), null);
+		}
+	}
+
+	private boolean isLikelyIntercepted(X509Certificate certificate) {
+		if (certificate == null) {
+			return false;
+		}
+		String subject = certificate.getSubjectX500Principal().getName();
+		String issuer = certificate.getIssuerX500Principal().getName();
+		String haystack = (subject + " " + issuer).toLowerCase();
+		return haystack.contains("fortinet") || haystack.contains("blocked page");
+	}
+
+	private List<String> resolveFallbackTargets(String host, String fallbackIp, boolean resolveDnsIfNoIp) {
+		List<String> targets = new java.util.ArrayList<>();
+		if (fallbackIp != null && !fallbackIp.isBlank()) {
+			targets.add(fallbackIp.trim());
+			return targets;
+		}
+		if (!resolveDnsIfNoIp) {
+			return targets;
+		}
+		try {
+			java.net.InetAddress[] addresses = java.net.InetAddress.getAllByName(host);
+			List<String> ipv4 = new java.util.ArrayList<>();
+			List<String> ipv6 = new java.util.ArrayList<>();
+			for (java.net.InetAddress address : addresses) {
+				String ip = address.getHostAddress();
+				if (address instanceof java.net.Inet4Address) {
+					ipv4.add(ip);
+				} else {
+					ipv6.add(ip);
+				}
+			}
+			targets.addAll(ipv4);
+			targets.addAll(ipv6);
+		} catch (Exception ex) {
+			logger.warn("Failed to resolve fallback IPs for {} - {}", host, ex.getMessage());
+		}
+		return targets;
 	}
 
 	private static class TrustAllX509TrustManager implements X509TrustManager {

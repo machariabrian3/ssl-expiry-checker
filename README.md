@@ -6,12 +6,13 @@ Author: Brian Mwai
 
 **API**
 `GET /api/v1/ssl/expiry?host=erp.bometwater.co.ke&port=443`
-
 Optional:
 `POST /api/v1/ssl/expiry` with JSON body `{ "host": "erp.bometwater.co.ke", "port": 443 }`
 
 Bulk:
 `POST /api/v1/ssl/expiry/bulk` with JSON array body (see example below)
+If a domain returns a known interception certificate (e.g., Fortinet blocked page), the service retries using `client_ip` when provided,
+otherwise it resolves DNS and tries the resolved IPs.
 
 Health:
 `GET /actuator/health`

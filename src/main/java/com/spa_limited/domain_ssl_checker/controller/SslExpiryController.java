@@ -45,16 +45,17 @@ public class SslExpiryController {
 	@GetMapping(value = "/expiry", produces = MediaType.APPLICATION_JSON_VALUE)
 	public SslExpiryResponse getExpiry(
 			@RequestParam("host") @NotBlank String host,
-			@RequestParam(value = "port", defaultValue = "443") @Min(1) @Max(65535) int port
+			@RequestParam(value = "port", defaultValue = "443") @Min(1) @Max(65535) int port,
+			@RequestParam(value = "client_ip", required = false) String clientIp
 	) {
-		return sslExpiryService.check(host.trim(), port);
+		return sslExpiryService.checkWithFallback(host.trim(), port, clientIp, true);
 	}
 
 	@PostMapping(value = "/expiry", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
 	public SslExpiryResponse postExpiry(@Valid @RequestBody SslExpiryRequest request) {
 		String host = request.getHost() == null ? "" : request.getHost().trim();
 		int port = request.getPort() == null ? 443 : request.getPort();
-		return sslExpiryService.check(host, port);
+		return sslExpiryService.checkWithFallback(host, port, request.getClientIp(), true);
 	}
 
 	@PostMapping(value = "/expiry/bulk", consumes = MediaType.APPLICATION_JSON_VALUE, produces = MediaType.APPLICATION_JSON_VALUE)
@@ -66,7 +67,7 @@ public class SslExpiryController {
 			futures.add(CompletableFuture.supplyAsync(() -> {
 				String host = item.getClientDomain() == null ? "" : item.getClientDomain().trim();
 				int port = item.getPort() == null ? 443 : item.getPort();
-				SslExpiryResponse response = sslExpiryService.check(host, port);
+			SslExpiryResponse response = sslExpiryService.checkWithFallback(host, port, item.getClientIp(), true);
 				BulkSslExpiryResponseItem enriched = new BulkSslExpiryResponseItem();
 				enriched.setClientName(item.getClientName());
 				enriched.setClientIp(item.getClientIp());
