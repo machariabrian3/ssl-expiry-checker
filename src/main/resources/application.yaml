@@ -9,6 +9,8 @@ ssl:
   connect-timeout-ms: ${SSL_CONNECT_TIMEOUT_MS:5000}
   read-timeout-ms: ${SSL_READ_TIMEOUT_MS:7000}
   expiring-days: ${SSL_EXPIRING_DAYS:7}
+  bulk-concurrency: ${SSL_BULK_CONCURRENCY:16}
+  bulk-timeout-ms: ${SSL_BULK_TIMEOUT_MS:180000}
 
 management:
   endpoints:

@@ -17,6 +17,12 @@ public class SslExpiryProperties {
 	@Min(1)
 	private int expiringDays = 7;
 
+	@Min(1)
+	private int bulkConcurrency = 16;
+
+	@Min(100)
+	private int bulkTimeoutMs = 180000;
+
 	public int getConnectTimeoutMs() {
 		return connectTimeoutMs;
 	}
@@ -39,5 +45,21 @@ public class SslExpiryProperties {
 
 	public void setExpiringDays(int expiringDays) {
 		this.expiringDays = expiringDays;
+	}
+
+	public int getBulkConcurrency() {
+		return bulkConcurrency;
+	}
+
+	public void setBulkConcurrency(int bulkConcurrency) {
+		this.bulkConcurrency = bulkConcurrency;
+	}
+
+	public int getBulkTimeoutMs() {
+		return bulkTimeoutMs;
+	}
+
+	public void setBulkTimeoutMs(int bulkTimeoutMs) {
+		this.bulkTimeoutMs = bulkTimeoutMs;
 	}
 }

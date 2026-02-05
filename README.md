@@ -36,6 +36,11 @@ Environment variables:
 - `SSL_CONNECT_TIMEOUT_MS` (default `5000`)
 - `SSL_READ_TIMEOUT_MS` (default `7000`)
 - `SSL_EXPIRING_DAYS` (default `7`)
+- `SSL_BULK_CONCURRENCY` (default `16`)
+- `SSL_BULK_TIMEOUT_MS` (default `180000`)
+
+Bulk constraints:
+- Maximum 300 items per bulk request.
 
 ## Run Locally
 ```bash
