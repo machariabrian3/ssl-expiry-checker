@@ -5,10 +5,13 @@ Production-ready Spring Boot service that performs a real TLS handshake with SNI
 Author: Brian Mwai
 
 **API**
-`GET /api/v1/ssl/expiry?host=test.test.com&port=443`
+`GET /api/v1/ssl/expiry?host=erp.bometwater.co.ke&port=443`
 
 Optional:
-`POST /api/v1/ssl/expiry` with JSON body `{ "host": "test.test.com", "port": 443 }`
+`POST /api/v1/ssl/expiry` with JSON body `{ "host": "erp.bometwater.co.ke", "port": 443 }`
+
+Bulk:
+`POST /api/v1/ssl/expiry/bulk` with JSON array body (see example below)
 
 Health:
 `GET /actuator/health`
@@ -41,7 +44,25 @@ Environment variables:
 
 Example:
 ```bash
-curl "http://localhost:8011/api/v1/ssl/expiry?host=test.test.com"
+curl "http://localhost:8011/api/v1/ssl/expiry?host=erp.bometwater.co.ke"
+```
+
+Bulk example:
+```bash
+curl -X POST "http://localhost:8011/api/v1/ssl/expiry/bulk" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {
+      "client_name": "BOMET WATER AND SANITATION COMPANY",
+      "client_ip": "102.217.125.27",
+      "client_domain": "erp.bometwater.co.ke"
+    },
+    {
+      "client_name": "CHEmUSUSU WATER COMPANY",
+      "client_ip": "102.217.125.172",
+      "client_domain": "erp.chewasco.co.ke"
+    }
+  ]'
 ```
 
 Sample response:
